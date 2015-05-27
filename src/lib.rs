@@ -220,6 +220,10 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for LinearVisitor<'a, 'tcx, 'b> {
                     if self.map.contains_key(&id) {
                         self.map.remove(&id).unwrap();
                     }
+                } else if let Some((from, _)) = expr_to_upvar(self.cx.tcx, e) {
+                    if self.map.contains_key(&from) {
+                        self.map.remove(&from).unwrap();
+                    }
                 }
                 visit::walk_expr(self, e);
             }
@@ -478,6 +482,14 @@ fn expr_to_deflocal<'tcx>(tcx: &'tcx ctxt, expr: &Expr) -> Option<NodeId> {
     }
 }
 
+fn expr_to_upvar<'tcx>(tcx: &'tcx ctxt, expr: &Expr) -> Option<(NodeId, NodeId)> {
+    let def = tcx.def_map.borrow().get(&expr.id).map(|&v| v);
+    if let Some(PathResolution { base_def: DefUpvar(from, to), .. }) = def {
+        Some((from, to))
+    } else {
+        None
+    }
+}
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
